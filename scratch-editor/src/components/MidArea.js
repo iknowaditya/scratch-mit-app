@@ -3,17 +3,19 @@ import {
   moveSprite,
   turnSprite,
   glideSprite,
+  goToPosition,
 } from "./SideBar/MotionSection/MotionSection";
 import {
   hideSprite,
   showSprite,
   showMessageBubble,
+  showThinkBubble,
 } from "./SideBar/LooksSection/LookSection";
-import Icon from "./Icon"; // Ensure you import the Icon component here as well
-import QueueAction from "./actions";
+import Icon from "./Icon";
+import { enqueueAction, setMessage } from "./actions";
 import { useDispatch } from "react-redux";
 
-const MidArea = () => {
+const MidArea = ({ spriteId }) => {
   const [droppedElements, setDroppedElements] = useState([]);
   const dispatch = useDispatch();
 
@@ -39,27 +41,53 @@ const MidArea = () => {
 
   const handleElementClick = (actionType, value) => {
     if (actionType === "move") {
-      moveSprite(value);
-      dispatch(QueueAction("ENQUEUE", `move_right ${value}`));
+      const steps = parseInt(value);
+      moveSprite(steps, spriteId);
+      dispatch(enqueueAction(`move_right ${steps}`, spriteId));
     } else if (actionType === "turnLeft") {
-      turnSprite(value, "left");
-      dispatch(QueueAction("ENQUEUE", `turn_left ${value}`));
+      const degrees = parseInt(value);
+      turnSprite(degrees, "left", spriteId);
+      dispatch(enqueueAction(`turn_left ${degrees}`, spriteId));
     } else if (actionType === "turnRight") {
-      turnSprite(value, "right");
-      dispatch(QueueAction("ENQUEUE", `turn_right ${value}`));
+      const degrees = parseInt(value);
+      turnSprite(degrees, "right", spriteId);
+      dispatch(enqueueAction(`turn_right ${degrees}`, spriteId));
     } else if (actionType === "show") {
-      showSprite();
-      dispatch(QueueAction("ENQUEUE", `show`));
+      showSprite(spriteId);
+      dispatch(enqueueAction("show", spriteId));
     } else if (actionType === "hide") {
-      hideSprite();
-      dispatch(QueueAction("ENQUEUE", `hide`));
+      hideSprite(spriteId);
+      dispatch(enqueueAction("hide", spriteId));
     } else if (actionType === "glide") {
-      glideSprite(Number(value));
-      dispatch(QueueAction("ENQUEUE", `glide ${value}`));
+      const time = parseInt(value);
+      glideSprite(time, spriteId);
+      dispatch(enqueueAction(`glide ${time}`, spriteId));
     } else if (actionType === "say") {
       const arg = value.split("_");
-      showMessageBubble(!Boolean(arg[1]), arg[0], Number(arg[2]), dispatch);
-      dispatch(QueueAction("ENQUEUE", `say ${value}`));
+      showMessageBubble(
+        !Boolean(arg[1]),
+        arg[0],
+        Number(arg[2]),
+        dispatch,
+        spriteId
+      );
+      dispatch(enqueueAction(`say ${value}`, spriteId));
+    } else if (actionType === "goTo") {
+      const [x, y] = value.split("_").map(Number);
+      goToPosition(x, y, spriteId);
+      dispatch(enqueueAction(`go_to ${x}_${y}`, spriteId));
+    } else if (actionType === "think") {
+      const arg = value.split("_");
+      showThinkBubble(
+        !Boolean(arg[1]),
+        arg[0],
+        Number(arg[2]),
+        dispatch,
+        spriteId
+      );
+      dispatch(enqueueAction(`think ${value}`, spriteId));
+    } else if (actionType === "repeat") {
+      dispatch(enqueueAction(`repeat ${value}`, spriteId));
     }
   };
 
@@ -83,8 +111,11 @@ const MidArea = () => {
   const renderInputElement = (elem, index, elemIndex) => {
     const allSplitArgs = elem.value.split("_");
     const value = elem.value.split("_")[index];
-    if (elem.actionType === "say" && index === 0) {
-      dispatch(QueueAction("SET_MESSAGE", value));
+    if (
+      (elem.actionType === "say" || elem.actionType === "think") &&
+      index === 0
+    ) {
+      dispatch(setMessage(value, spriteId));
     }
     return (
       value !== "null" && (
@@ -111,7 +142,7 @@ const MidArea = () => {
   };
 
   return (
-    <div className="relative h-full w-full">
+    <div className="relative h-full w-full ">
       <div
         className="absolute inset-0"
         onDragOver={handleDragOver}
@@ -123,10 +154,11 @@ const MidArea = () => {
             className={`${
               elem.actionType === "show" ||
               elem.actionType === "hide" ||
-              elem.actionType === "say"
+              elem.actionType === "say" ||
+              elem.actionType === "think"
                 ? "bg-purple-500"
                 : "bg-blue-500"
-            } flex flex-row flex-wrap text-white px-2 py-1 my-2 cursor-pointer rounded items-center text-xs`}
+            } flex flex-row flex-wrap text-white px-2 py-1 my-2 cursor-pointer rounded items-center text-xs hover:opacity-90 transition-opacity`}
             style={{
               position: "absolute",
               top: elem.y,
@@ -149,6 +181,10 @@ const MidArea = () => {
             <span>{elem.actionType === "show" && "Show"}</span>
             <span>{elem.actionType === "hide" && "Hide"}</span>
             <span>{elem.actionType === "say" && "Say"}</span>
+            <span>{elem.actionType === "think" && "Think"}</span>
+            <span>{elem.actionType === "goTo" && "Go to"}</span>
+            <span>{elem.actionType === "repeat" && "Repeat"}</span>
+
             {elem.actionType.includes("turn") && (
               <Icon
                 name={elem.actionType === "turnLeft" ? "undo" : "redo"}
@@ -156,13 +192,24 @@ const MidArea = () => {
                 className="text-white mx-2 mt-1"
               />
             )}
+
             {renderInputElement(elem, 0, elemIndex)}
+
             {elem.actionType === "move" && <span>steps</span>}
             {elem.actionType === "glide" && (
               <span>secs to random position</span>
             )}
             {elem.actionType.includes("turn") && <span>degrees</span>}
-            {elem.actionType === "say" && (
+            {elem.actionType === "goTo" && (
+              <>
+                <span>x:</span>
+                {renderInputElement(elem, 0, elemIndex)}
+                <span>y:</span>
+                {renderInputElement(elem, 1, elemIndex)}
+              </>
+            )}
+            {elem.actionType === "repeat" && <span>times</span>}
+            {(elem.actionType === "say" || elem.actionType === "think") && (
               <div className="flex flex-row justify-evenly">
                 <span>for </span>
                 {renderInputElement(elem, 2, elemIndex)}
@@ -172,40 +219,18 @@ const MidArea = () => {
           </div>
         ))}
       </div>
+
       <button
         onClick={handleRun}
-        className="absolute top-4 right-4 p-2 bg-indigo-500 text-white rounded flex items-center"
+        className="absolute top-4 right-4 p-2 bg-indigo-500 text-white rounded flex items-center hover:bg-indigo-600 transition-colors"
       >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          className="h-5 w-5 mr-1"
-          viewBox="0 0 20 20"
-          fill="currentColor"
-        >
-          <path
-            fillRule="evenodd"
-            d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"
-            clipRule="evenodd"
-          />
-        </svg>
         Run
       </button>
+
       <button
         onClick={handleReset}
-        className="absolute top-16 right-4 p-2 bg-gray-500 text-white rounded flex items-center"
+        className="absolute top-16 right-4 p-2 bg-gray-500 text-white rounded flex items-center hover:bg-gray-600 transition-colors"
       >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          className="h-5 w-5 mr-1"
-          viewBox="0 0 20 20"
-          fill="currentColor"
-        >
-          <path
-            fillRule="evenodd"
-            d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z"
-            clipRule="evenodd"
-          />
-        </svg>
         Reset
       </button>
     </div>
