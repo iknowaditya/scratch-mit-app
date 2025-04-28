@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useImperativeHandle, forwardRef } from "react";
 import {
   moveSprite,
   turnSprite,
@@ -15,9 +15,12 @@ import Icon from "./Icon";
 import { enqueueAction, setMessage } from "./actions";
 import { useDispatch } from "react-redux";
 
-const MidArea = ({ spriteId }) => {
+const MidArea = forwardRef(({ spriteId }, ref) => {
   const [droppedElements, setDroppedElements] = useState([]);
   const dispatch = useDispatch();
+  useImperativeHandle(ref, () => ({
+    runActions: handleRun,
+  }));
 
   const handleDrop = (e) => {
     e.preventDefault();
@@ -64,13 +67,12 @@ const MidArea = ({ spriteId }) => {
       dispatch(enqueueAction(`glide ${time}`, spriteId));
     } else if (actionType === "say") {
       const arg = value.split("_");
-      showMessageBubble(
-        !Boolean(arg[1]),
-        arg[0],
-        Number(arg[2]),
-        dispatch,
-        spriteId
-      );
+      const message = arg[0];
+      const showMessage = arg[1] === "true"; // boolean
+      const manageTime = Number(arg[2]); // number
+
+      showMessageBubble(showMessage, message, manageTime, dispatch, spriteId);
+
       dispatch(enqueueAction(`say ${value}`, spriteId));
     } else if (actionType === "goTo") {
       const [x, y] = value.split("_").map(Number);
@@ -235,6 +237,6 @@ const MidArea = ({ spriteId }) => {
       </button>
     </div>
   );
-};
+});
 
 export default MidArea;

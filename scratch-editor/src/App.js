@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import Sidebar from "./components/SideBar/Sidebar";
 import MidArea from "./components/MidArea";
 import PreviewArea from "./components/PreviewArea";
@@ -7,13 +7,16 @@ import { SquarePlus, Trash2, Play } from "lucide-react";
 import CollisionDetector from "./components/CollisionDetector";
 
 export default function App() {
-  const [sprites, setSprites] = useState([{ id: 1 }]);
+  const [sprites, setSprites] = useState([{ id: 1, type: "cat" }]);
+  const spriteRefs = useRef({});
 
   const maxSprites = 3;
+  const spriteTypes = ["cat", "pig", "panda"];
 
   const addSprite = () => {
     if (sprites.length < maxSprites) {
-      setSprites([...sprites, { id: Date.now() }]);
+      const nextType = spriteTypes[sprites.length % spriteTypes.length];
+      setSprites([...sprites, { id: Date.now(), type: nextType }]);
     }
   };
 
@@ -23,28 +26,24 @@ export default function App() {
     }
   };
 
-  // const handleGlobalPlay = () => {
-  //   sprites.forEach((sprite) => {
-  //     const midArea = document.querySelector(`[data-sprite-id="${sprite.id}"]`);
-  //     if (midArea) {
-  //       const runButton = midArea.querySelector("button:first-child");
-  //       if (runButton) {
-  //         runButton.click();
-  //       }
-  //     }
-  //   });
-  // };
+  const handleGlobalPlay = () => {
+    Object.values(spriteRefs.current).forEach((midAreaRef) => {
+      if (midAreaRef) {
+        midAreaRef.runActions();
+      }
+    });
+  };
 
   return (
     <div className="bg-blue-100 pt-6 font-sans">
       <div className="flex justify-center mb-4">
-        {/* <button
+        <button
           onClick={handleGlobalPlay}
           className="p-2 bg-green-500 text-white rounded flex items-center hover:bg-green-600 transition-colors"
         >
           <Play size={16} className="mr-1" />
           Play All Sprites
-        </button> */}
+        </button>
       </div>
       <div className="h-screen overflow-hidden flex flex-row">
         <div className="flex flex-row bg-white border-t border-r border-gray-200 rounded-tr-xl mr-2">
@@ -59,7 +58,10 @@ export default function App() {
               className="h-screen flex-1 min-w-[400px] relative bg-white border-r border-gray-200"
               data-sprite-id={sprite.id}
             >
-              <MidArea spriteId={sprite.id} />
+              <MidArea
+                spriteId={sprite.id}
+                ref={(el) => (spriteRefs.current[sprite.id] = el)}
+              />
               {index > 0 && (
                 <button
                   onClick={() => removeSprite(sprite.id)}

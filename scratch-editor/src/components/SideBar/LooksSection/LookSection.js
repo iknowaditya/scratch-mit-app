@@ -26,11 +26,10 @@ export const showMessageBubble = (
   dispatch,
   spriteId
 ) => {
-  const isShow = !showMessage;
-  dispatch(setShowMessage(isShow, spriteId));
+  dispatch(setShowMessage(showMessage, spriteId));
   dispatch(setMessage(message, spriteId));
 
-  if (isShow) {
+  if (showMessage) {
     const el = document.getElementById(`character-${spriteId}`);
     if (el) {
       const rect = el.getBoundingClientRect();
@@ -46,7 +45,7 @@ export const showMessageBubble = (
       const el = document.getElementById(`character-${spriteId}`);
       if (el) {
         const rect = el.getBoundingClientRect();
-        dispatch(setShowMessage(!isShow, spriteId));
+        dispatch(setShowMessage(false, spriteId));
         const bubblePos = {
           top: rect.top - 30,
           left: rect.left + rect.width / 2,

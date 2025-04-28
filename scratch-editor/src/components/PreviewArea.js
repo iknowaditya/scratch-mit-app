@@ -85,10 +85,10 @@ const PreviewArea = ({ sprites }) => {
                 {spriteState.message}
               </div>
             )}
-            <CatSprite />
-            {/* {sprite.type === "cat" && <CatSprite />}
+            {/* <CatSprite /> */}
+            {sprite.type === "cat" && <CatSprite />}
             {sprite.type === "pig" && <PigSprit />}
-            {sprite.type === "panda" && <PandaSprite />} */}
+            {sprite.type === "panda" && <PandaSprite />}
           </div>
         );
       })}
